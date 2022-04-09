@@ -1,9 +1,9 @@
-from msilib.schema import Error
-from re import A
 from fastapi import FastAPI, Path
 from typing import Optional
 from pydantic import BaseModel
 from cryptography.fernet import Fernet
+from assymetric_functions import encryptText, decryptText
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 # uvicorn main:app --reload
 
@@ -47,6 +47,20 @@ def post_symmetric_decode(text : str):
     decoded_text = f.decrypt(byte_text)
     return {"decoded_text": decoded_text}
 
+
+@app.get("/asymmetric/key")
+def get_asymmetric_key():
+    private_key = rsa.generate_private_key(65537, 2048)
+    public_key = private_key.public_key()  
+
+    data["asymmetric"]["private_key"] = private_key
+    data["asymmetric"]["public_key"] = public_key
+
+    return {"private_key": private_key, "public_key": public_key}
+
+
+# @app.post("/asymmetric/key")
+# def post_asymmetric_key():
 
 
 
