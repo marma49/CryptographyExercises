@@ -1,10 +1,6 @@
 from fastapi import FastAPI, Path
-from typing import Optional
-from pydantic import BaseModel
 from cryptography.fernet import Fernet
 from assymetric_functions import *
-
-from cryptography.hazmat.primitives.asymmetric import rsa
 import binascii
 
 # uvicorn main:app --reload
@@ -15,7 +11,6 @@ data = {
     "symmetric": {},
     "asymmetric": {}
 }
-
 
 @app.get("/symmetric/key")
 def get_symmetric_key():
@@ -81,6 +76,23 @@ def post_asymmetric_key(private_key: str, public_key: str):
     return {"Message": "Keys added successfully to the database!"}
 
 
+@app.post("/asymmetric/verify")
+def post_asymmetric_verify(clear_text, signature):
+    public_key_str = data["asymmetric"]["public_key"]
+    if verify_message(clear_text, signature, public_key_str) == True:
+        return {"Message": "Message verified correctly to be encrypted with given public key"}
+    else:
+        return {"Message": "Message verified incorrectly"}
+
+
+@app.post("/asymmetric/sign")
+def post_asymmetric_sign(clear_text):
+    private_key_str = data["asymmetric"]["private_key"]
+    signed_message = sign_message(private_key_str, clear_text)
+
+    return {"Signed message": signed_message}
+
+
 @app.post("/asymmetric/encode")
 def post_asymmetric_encode(clear_text: str):
     encrypted_text = encrypt_text(clear_text, data["asymmetric"]["public_key"])
@@ -93,15 +105,8 @@ def post_asymmetric_decode(encrypted_text: str):
     return {"decrypted text": decrypted_text}
 
 
-# @app.get("/data")
-# def get_data():
-#     return data
+@app.get("/data")
+def get_data():
+    return data
 
 
-# @app.post("/symmetric/pizza")
-# def post_symmetric_key(text : str):
-#     print(data["asymmetric"]["public_key_B64"])
-#     f = Fernet(data["asymmetric"]["public_key_B64"])
-
-#     encoded_text = f.encrypt(text.encode()).decode()
-#     return encoded_text

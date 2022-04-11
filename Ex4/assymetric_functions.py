@@ -5,6 +5,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.hazmat.primitives.serialization import load_ssh_private_key
+from cryptography.exceptions import InvalidSignature
 from binascii import unhexlify
 
 
@@ -114,22 +115,51 @@ def decrypt_text(encrypted_text: str, private_key_str: str) -> str:
     return decrypted_text.decode()
 
 
-# private_k1 = create_private_key()
-# print(private_k1)
-# print(unhexlify(private_k1))
+def verify_message(clear_text: str, signature: str, public_key_str: str):
+    """Check if text was encrypted with a given public key
 
-# public_k1 = create_public_key(private_k1)
-# print(public_k1)
-# print(unhexlify(public_k1))
+    Args:
+        clear_text (str): Clear text of message
+        signature (str): Signed message
+        public_key_str (str): Hex public text
 
-# private_kSSH = create_private_key_OpenSSH()
-# public_KSSH = create_public_key_OpenSSH(private_kSSH)
-# print(private_kSSH)
-# print(public_KSSH)
-# print(unhexlify(private_kSSH))
-# print(unhexlify(public_KSSH))
+    Returns:
+        _type_: _description_
+    """
+    public_key = load_pem_public_key(unhexlify(public_key_str), None)
+    try: 
+        public_key.verify(
+            unhexlify(signature),
+            clear_text.encode(),
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
+    except InvalidSignature:
+        return False
+    return True
 
-# encrypted = encrypt_text("pizza", public_k1)
-# print(encrypted)
-# decrypted = decrypt_text(encrypted, private_k1)
-# print(decrypted)
+    
+def sign_message(private_key_str: str, clear_text: str) -> str:
+    """Signs message
+
+    Args:
+        private_key_str (str): Hex private key
+        clear_text (str): Message to sign
+
+    Returns:
+        str: Signed message
+    """
+    private_key_obj = load_pem_private_key(unhexlify(private_key_str), None)
+
+    signature = private_key_obj.sign(
+        clear_text.encode(),
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH
+        ),
+        hashes.SHA256()
+    )
+    return signature.hex()
