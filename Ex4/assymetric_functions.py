@@ -2,59 +2,134 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from cryptography.hazmat.primitives.serialization import load_ssh_private_key
+from binascii import unhexlify
 
 
-def read_private_key(private_key):
-    pem = private_key.private_bytes(
+def create_private_key() -> str:
+    """Creates hex private key
+
+    Returns:
+        str: Hex private key
+    """
+    private_key_obj = rsa.generate_private_key(65537, 2048)
+
+    private_key_str = private_key_obj.private_bytes(
         serialization.Encoding.PEM, 
         serialization.PrivateFormat.TraditionalOpenSSL, 
         serialization.NoEncryption()
     )
-    pem = ''.join(pem.decode().splitlines()[1:-1]).encode()
-    return pem
+    return private_key_str.hex()
 
 
-def read_public_key(private_key):
-    pub_pem = private_key.public_key().public_bytes(
+def create_public_key(private_key_str: str) -> str:
+    """Creates hex public key from hex private key
+
+    Args:
+        private_key_str (str): Hex private key
+
+    Returns:
+        str: Hex public key
+    """
+    private_key_obj = load_pem_private_key(unhexlify(private_key_str), None)
+
+    public_key_str = private_key_obj.public_key().public_bytes(
         serialization.Encoding.PEM,
         serialization.PublicFormat.SubjectPublicKeyInfo
     )
-
-    pub_pem = ''.join(pub_pem.decode().splitlines()[1:-1]).encode()
-    return pub_pem
+    return public_key_str.hex()
 
 
-def encrypt_text(clear_text, public_key):
-    encrypted_text = public_key.encrypt(clear_text.encode(), padding.OAEP(
-        padding.MGF1(hashes.SHA256()),
-        hashes.SHA256(),
-        None))
-    return encrypted_text
+def create_private_key_OpenSSH() -> str:
+    """Creates hex private OpenSSH key
 
+    Returns:
+        str: Hex private OpenSSH key
+    """
+    private_key_obj = rsa.generate_private_key(65537, 2048)
 
-def decrypt_text(encrypted_text, private_key):
-    decrypted_text = private_key.decrypt(encrypted_text, padding.OAEP(
-        padding.MGF1(hashes.SHA256()),
-        hashes.SHA256(),
-        None))
-    return decrypted_text
-
-
-def read_private_key_OpenSSH(private_key):
-    pem = private_key.private_bytes(
+    private_key_str = private_key_obj.private_bytes(
         serialization.Encoding.PEM, 
         serialization.PrivateFormat.OpenSSH, 
         serialization.NoEncryption()
     )
-    return pem.hex()
+    return private_key_str.hex()
 
 
-def read_public_key_OpenSSH(private_key):
-    pub_pem = private_key.public_key().public_bytes(
+def create_public_key_OpenSSH(private_key_str: str) -> str:
+    """Creates a hex public OpenSSH key from a hex private key 
+
+    Args:
+        private_key_str (str): Hex private OpenSSH key
+
+    Returns:
+        str: Public OpenSSH key as a hex
+    """
+    private_key_obj = load_ssh_private_key(unhexlify(private_key_str), None)
+
+    public_key_str = private_key_obj.public_key().public_bytes(
         serialization.Encoding.OpenSSH,
         serialization.PublicFormat.OpenSSH
     )
-    return pub_pem.hex()
+    return public_key_str.hex()
 
 
+def encrypt_text(clear_text: str, public_key_str: str) -> str:
+    """Encrypts text by using hex public key
 
+    Args:
+        clear_text (str): Text which you want to encrypt
+        public_key_str (str): Public key
+
+    Returns:
+        str: Encrypted text
+    """
+    public_key_obj = load_pem_public_key(unhexlify(public_key_str), None)
+
+    encrypted_text = public_key_obj.encrypt(clear_text.encode(), padding.OAEP(
+        padding.MGF1(hashes.SHA256()),
+        hashes.SHA256(),
+        None))
+    return encrypted_text.hex()
+
+
+def decrypt_text(encrypted_text: str, private_key_str: str) -> str:
+    """Decrypts text by using hex private key
+
+    Args:
+        encrypted_text (str): Encrypted text
+        private_key_str (str): Private key
+
+    Returns:
+        str: Decrypted text
+    """
+    private_key_obj = load_pem_private_key(unhexlify(private_key_str), None)
+
+    decrypted_text = private_key_obj.decrypt(unhexlify(encrypted_text), padding.OAEP(
+        padding.MGF1(hashes.SHA256()),
+        hashes.SHA256(),
+        None))
+    return decrypted_text.decode()
+
+
+# private_k1 = create_private_key()
+# print(private_k1)
+# print(unhexlify(private_k1))
+
+# public_k1 = create_public_key(private_k1)
+# print(public_k1)
+# print(unhexlify(public_k1))
+
+# private_kSSH = create_private_key_OpenSSH()
+# public_KSSH = create_public_key_OpenSSH(private_kSSH)
+# print(private_kSSH)
+# print(public_KSSH)
+# print(unhexlify(private_kSSH))
+# print(unhexlify(public_KSSH))
+
+# encrypted = encrypt_text("pizza", public_k1)
+# print(encrypted)
+# decrypted = decrypt_text(encrypted, private_k1)
+# print(decrypted)

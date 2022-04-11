@@ -2,8 +2,8 @@ from fastapi import FastAPI, Path
 from typing import Optional
 from pydantic import BaseModel
 from cryptography.fernet import Fernet
-from assymetric_functions import decrypt_text, encrypt_text
-from assymetric_functions import read_private_key, read_public_key, read_private_key_OpenSSH, read_public_key_OpenSSH
+from assymetric_functions import *
+
 from cryptography.hazmat.primitives.asymmetric import rsa
 import binascii
 
@@ -54,68 +54,54 @@ def post_symmetric_decode(text : str):
 
 @app.get("/asymmetric/key")
 def get_asymmetric_key():
-    private_key = rsa.generate_private_key(65537, 2048)
+    private_key = create_private_key()
+    public_key = create_public_key(private_key)
 
-    private_key_B64 = read_private_key(private_key)
-    public_key_B64 = read_public_key(private_key)
+    data["asymmetric"]["private_key"] = private_key
+    data["asymmetric"]["public_key"] = public_key
 
-    data["asymmetric"]["private_key_B64"] = private_key_B64
-    data["asymmetric"]["public_key_B64"] = public_key_B64
-
-    data["asymmetric"]["private_key_HEX"] = private_key_B64.hex()
-    data["asymmetric"]["public_key_HEX"] = public_key_B64.hex()
-
-    return {"private_key": data["asymmetric"]["private_key_HEX"], 
-        "public_key": data["asymmetric"]["public_key_HEX"]}
+    return {"private_key": data["asymmetric"]["private_key"], 
+        "public_key": data["asymmetric"]["public_key"]}
 
 
 @app.get("/asymmetric/key/ssh")
 def get_asymmetric_key_ssh():
-    private_key = rsa.generate_private_key(65537, 2048)
+    private_key_OpenSSH = create_private_key_OpenSSH()
+    public_key_OpenSSH = create_public_key_OpenSSH(private_key_OpenSSH)
 
-    private_key_openSSH = read_private_key_OpenSSH(private_key)
-    public_key_OpenSSH = read_public_key_OpenSSH(private_key)
-
-    return {"private_key_openSSH": private_key_openSSH, "public_key_OpenSSH": public_key_OpenSSH}
+    return {"private_key_openSSH": private_key_OpenSSH, "public_key_OpenSSH": public_key_OpenSSH}
 
 
 @app.post("/asymmetric/key")
-def post_asymmetric_key(private_key_HEX: str, public_key_HEX: str):
+def post_asymmetric_key(private_key: str, public_key: str):
     
-    try:
-        private_key_B64 = binascii.unhexlify(private_key_HEX)
-        public_key_B64 = binascii.unhexlify(public_key_HEX)
-    except:
-        return {"Message": "Your keys are probably incorrect"}
-    
-    data["asymmetric"]["private_key_B64"] = private_key_B64
-    data["asymmetric"]["public_key_B64"] = public_key_B64
-
-    data["asymmetric"]["private_key_HEX"] = private_key_HEX
-    data["asymmetric"]["public_key_HEX"] = public_key_HEX
+    data["asymmetric"]["private_key"] = private_key
+    data["asymmetric"]["public_key"] = public_key
 
     return {"Message": "Keys added successfully to the database!"}
 
 
 @app.post("/asymmetric/encode")
-def post_asymmetric_encode(clear_text: str, ):
-    return encrypt_text(clear_text)
+def post_asymmetric_encode(clear_text: str):
+    encrypted_text = encrypt_text(clear_text, data["asymmetric"]["public_key"])
+    return {"encrypted text": encrypted_text}
 
 
 @app.post("/asymmetric/decode")
 def post_asymmetric_decode(encrypted_text: str):
-    return decrypt_text(encrypted_text)
+    decrypted_text = decrypt_text(encrypted_text, data["asymmetric"]["private_key"])
+    return {"decrypted text": decrypted_text}
 
 
-@app.get("/data")
-def get_data():
-    return data
+# @app.get("/data")
+# def get_data():
+#     return data
 
 
-@app.post("/symmetric/pizza")
-def post_symmetric_key(text : str):
-    print(data["asymmetric"]["public_key_B64"])
-    f = Fernet(data["asymmetric"]["public_key_B64"])
+# @app.post("/symmetric/pizza")
+# def post_symmetric_key(text : str):
+#     print(data["asymmetric"]["public_key_B64"])
+#     f = Fernet(data["asymmetric"]["public_key_B64"])
 
-    encoded_text = f.encrypt(text.encode()).decode()
-    return encoded_text
+#     encoded_text = f.encrypt(text.encode()).decode()
+#     return encoded_text
