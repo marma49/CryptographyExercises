@@ -1,0 +1,1 @@
+./main.py ./assymetric_functions.py ./symmetric_functions.py -o ./docs
